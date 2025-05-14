@@ -13,8 +13,7 @@ const io = new Server(server, {
 
 export function getReceiverSocketId(userId) {
     return userSocketMap[userId];
-  }
-  
+}
 
 const userSocketMap = {};
 
@@ -26,6 +25,28 @@ io.on("connection", (socket) => {
         userSocketMap[userId] = socket.id;
     }
     io.emit("getOnlineUsers", Object.keys(userSocketMap));
+
+    // Handle chat request events
+    socket.on("chatRequestSent", (data) => {
+        const receiverSocketId = getReceiverSocketId(data.receiverId);
+        if (receiverSocketId) {
+            io.to(receiverSocketId).emit("newChatRequest", data);
+        }
+    });
+
+    socket.on("chatRequestAccepted", (data) => {
+        const senderSocketId = getReceiverSocketId(data.senderId);
+        if (senderSocketId) {
+            io.to(senderSocketId).emit("chatRequestAccepted", data);
+        }
+    });
+
+    socket.on("chatRequestRejected", (data) => {
+        const senderSocketId = getReceiverSocketId(data.senderId);
+        if (senderSocketId) {
+            io.to(senderSocketId).emit("chatRequestRejected", data);
+        }
+    });
 
     socket.on("disconnect", () => {
         console.log("A user disconnected", socket.id);

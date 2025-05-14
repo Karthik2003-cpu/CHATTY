@@ -13,11 +13,11 @@ export const useAuthStore = create((set, get) => ({
     isCheckingAuth: true,
     onlineUsers: [],
     socket: null,
+    chatRequests: [],
 
     checkAuth: async () => {
         try {
             const res = await axiosInstance.get("/auth/check");
-
             set({ authUser: res.data.user });
         } catch (error) {
             console.log("Error checking auth", error);
@@ -59,7 +59,6 @@ export const useAuthStore = create((set, get) => ({
             const res = await axiosInstance.post("/auth/login", data);
             set({ authUser: res.data });
             toast.success("Logged in successfully");
-
             get().connectSocket();
         } catch (error) {
             toast.error(error.response.data.msg);
@@ -67,6 +66,7 @@ export const useAuthStore = create((set, get) => ({
             set({ isLoggingIn: false });
         }
     },
+
     updateProfile: async (data) => {
         set({ isUpdatingProfile: true });
         try {
@@ -84,21 +84,49 @@ export const useAuthStore = create((set, get) => ({
     connectSocket: () => {
         const { authUser } = get();
         if (!authUser || get().socket?.connected) return;
+        
         const socket = io(BASE_URL, {
             query: { userId: authUser._id },
         });
         socket.connect();
 
-        set({ socket: socket });
+        // Set up socket event listeners
         socket.on("getOnlineUsers", (userIds) => {
             set({ onlineUsers: userIds });
-          });
+        });
+
+        socket.on("newChatRequest", (request) => {
+            set((state) => ({
+                chatRequests: [...state.chatRequests, request]
+            }));
+            toast.success("New chat request received!");
+        });
+
+        socket.on("chatRequestAccepted", (request) => {
+            set((state) => ({
+                chatRequests: state.chatRequests.filter(req => req.requestId !== request.requestId)
+            }));
+            toast.success("Chat request accepted!");
+        });
+
+        socket.on("chatRequestRejected", (request) => {
+            set((state) => ({
+                chatRequests: state.chatRequests.filter(req => req.requestId !== request.requestId)
+            }));
+            toast.error("Chat request was rejected");
+        });
+
+        set({ socket: socket });
     },
+
     disconnectSocket: () => {
         if(get().socket?.connected) {
             get().socket.disconnect();
             set({ socket: null });
         }
-     },
+    },
 
+    clearChatRequests: () => {
+        set({ chatRequests: [] });
+    }
 }));

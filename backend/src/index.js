@@ -6,6 +6,7 @@ import { connectDB } from "./lib/db.js";
 import cookieParser from 'cookie-parser';
 import cors from "cors";
 import { app, server } from "./lib/socket.js";
+import chatRequestRoutes from "./routes/chatRequest.routes.js";
 
 
 dotenv.config();
@@ -21,6 +22,7 @@ app.use(cors({
 
 app.use('/api/auth', authRoutes);
 app.use('/api/message', messageRoutes);
+app.use('/api/chat-requests', chatRequestRoutes);
 
 const port = process.env.PORT;
 
