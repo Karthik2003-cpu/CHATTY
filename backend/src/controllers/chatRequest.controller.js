@@ -1,4 +1,5 @@
 import ChatRequest from "../models/chatRequest.models.js";
+import User from "../models/user.models.js";
 import { io, getReceiverSocketId } from "../lib/socket.js";
 
 export const sendChatRequest = async (req, res) => {
@@ -18,6 +19,8 @@ export const sendChatRequest = async (req, res) => {
 
     const chatRequest = new ChatRequest({ senderId, receiverId });
     await chatRequest.save();
+    const populatedRequest = await ChatRequest.findById(chatRequest._id).populate("senderId", "fullName profilePic");
+
 
     // Emit socket event for real-time notification
     const receiverSocketId = getReceiverSocketId(receiverId);
@@ -29,6 +32,8 @@ export const sendChatRequest = async (req, res) => {
         status: "pending",
         createdAt: chatRequest.createdAt
       });
+      res.status(201).json(populatedRequest);
+      return;
     }
 
     res.status(201).json(chatRequest);
@@ -140,4 +145,28 @@ export const checkChatRequestStatus = async (req, res) => {
     console.error("Error checking chat request status:", error);
     res.status(500).json({ msg: "Internal server error" });
   }
+};
+
+export const getAcceptedChatUsers = async (req, res) => {
+    try {
+        const myId = req.user._id;
+
+        // Find accepted chat requests where the user is sender or receiver
+        const acceptedRequests = await ChatRequest.find({
+            status: "accepted",
+            $or: [{ senderId: myId }, { receiverId: myId }]
+        });
+
+        // Get the other user's IDs
+        const userIds = acceptedRequests.map(r =>
+            r.senderId.toString() === myId.toString() ? r.receiverId : r.senderId
+        );
+
+        // Get user details (no message check)
+        const users = await User.find({ _id: { $in: userIds } }).select("-password");
+        res.status(200).json(users);
+    } catch (error) {
+        console.error("Error in getAcceptedChatUsers:", error.message);
+        res.status(500).json({ error: "Internal server error" });
+    }
 };

@@ -27,8 +27,10 @@ export const useChatStore = create((set, get) => ({
     try {
       const res = await axiosInstance.get(`/message/${userId}`);
       set({ messages: res.data });
+      return res.data;
     } catch (error) {
       toast.error(error.response.data.message);
+      return [];
     } finally {
       set({ isMessagesLoading: false });
     }
@@ -43,6 +45,20 @@ export const useChatStore = create((set, get) => ({
       toast.error(error.response.data.message);
     }
   },
+
+  getAcceptedUsers: async () => {
+    set({ isUsersLoading: true });
+    try {
+      const res = await axiosInstance.get("/message/accepted-users");
+      set({ acceptedUsers: res.data });
+    } catch (error) {
+      toast.error(error.response?.data?.message || "Failed to fetch accepted users");
+    } finally {
+      set({ isUsersLoading: false });
+    }
+  },
+  // Add acceptedUsers to the initial state:
+  acceptedUsers: [],
 
   subscribeToMessages: () => {
     const { selectedUser } = get();
@@ -60,10 +76,10 @@ export const useChatStore = create((set, get) => ({
   },
 
   unsubscribeFromMessages: () => {
-    const socket = useAuthStore.getState().socket;
-    socket.off("newMessage");
-  },
-
+  const socket = useAuthStore.getState().socket;
+  if (!socket) return; // Prevent error if socket is null
+  socket.off("newMessage");
+},
   setSelectedUser: (selectedUser) => {
     set({ selectedUser });
     get().getMessages(selectedUser._id); // Fetch messages when a user is selected

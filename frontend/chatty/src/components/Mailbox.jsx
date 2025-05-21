@@ -2,12 +2,16 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "../store/useAuthStore";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
+import { Bell } from "lucide-react";
 
 const Mailbox = () => {
-  const { socket } = useAuthStore();
+  const { socket, authUser } = useAuthStore();
   const [incomingRequests, setIncomingRequests] = useState([]);
+  const [isOpen, setIsOpen] = useState(false);
 
   useEffect(() => {
+    if (!authUser) return;
+
     const fetchRequests = async () => {
       try {
         const res = await axiosInstance.get("/chat-requests");
@@ -20,15 +24,29 @@ const Mailbox = () => {
     fetchRequests();
 
     if (socket) {
-      socket.on("chatRequestSent", (request) => {
+      socket.on("newChatRequest", (request) => {
         setIncomingRequests((prev) => [...prev, request]);
       });
 
+      socket.on("chatRequestAccepted", (request) => {
+        setIncomingRequests((prev) =>
+          prev.filter((req) => req._id !== request.requestId)
+        );
+      });
+
+      socket.on("chatRequestRejected", (request) => {
+        setIncomingRequests((prev) =>
+          prev.filter((req) => req._id !== request.requestId)
+        );
+      });
+
       return () => {
-        socket.off("chatRequestSent");
+        socket.off("newChatRequest");
+        socket.off("chatRequestAccepted");
+        socket.off("chatRequestRejected");
       };
     }
-  }, [socket]);
+  }, [socket, authUser]);
 
   const handleAccept = async (requestId) => {
     try {
@@ -56,39 +74,81 @@ const Mailbox = () => {
     }
   };
 
+  if (!authUser) return null;
+
   return (
     <div className="relative">
-      <button className="btn btn-sm btn-circle">
-        <span className="badge badge-primary">{incomingRequests.length}</span>
-      </button>
-      <div className="absolute right-0 mt-2 w-64 bg-white shadow-lg rounded-lg p-4">
-        <h3 className="text-sm font-bold mb-2">Incoming Requests</h3>
-        {incomingRequests.length === 0 ? (
-          <p className="text-sm text-gray-500">No new requests</p>
-        ) : (
-          <ul className="space-y-2">
-            {incomingRequests.map((request) => (
-              <li key={request._id} className="flex items-center justify-between">
-                <span className="text-sm font-medium">{request.senderId.fullName}</span>
-                <div className="flex gap-2">
-                  <button
-                    className="btn btn-xs btn-success"
-                    onClick={() => handleAccept(request._id)}
-                  >
-                    Accept
-                  </button>
-                  <button
-                    className="btn btn-xs btn-error"
-                    onClick={() => handleReject(request._id)}
-                  >
-                    Reject
-                  </button>
-                </div>
-              </li>
-            ))}
-          </ul>
+      <button 
+        className="btn btn-sm btn-circle relative"
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        <Bell className="w-4 h-4" />
+        {incomingRequests.length > 0 && (
+          <span className="absolute -top-1 -right-1 bg-primary text-primary-content text-xs rounded-full w-5 h-5 flex items-center justify-center">
+            {incomingRequests.length}
+          </span>
         )}
-      </div>
+      </button>
+
+      {isOpen && (
+        <div className="absolute right-0 mt-2 w-72 bg-base-100 shadow-lg rounded-lg p-4 z-50 border border-base-300">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="font-medium">Chat Requests</h3>
+            <button 
+              className="btn btn-ghost btn-xs"
+              onClick={() => setIsOpen(false)}
+            >
+              Close
+            </button>
+          </div>
+          
+          {incomingRequests.length === 0 ? (
+            <p className="text-sm text-base-content/70 text-center py-4">
+              No pending requests
+            </p>
+          ) : (
+            <ul className="space-y-2 max-h-[300px] overflow-y-auto">
+              {incomingRequests.map((request) => (
+                <li 
+                  key={request._id} 
+                  className="flex items-center justify-between p-2 rounded-lg hover:bg-base-200"
+                >
+                  <div className="flex items-center gap-2">
+                    <div className="avatar">
+                      <div className="w-8 h-8 rounded-full">
+                        <img 
+                          src={request.senderId.profilePic || "/avatar.png"} 
+                          alt={request.senderId.fullName}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">{request.senderId.fullName}</p>
+                      <p className="text-xs text-base-content/70">
+                        {new Date(request.createdAt).toLocaleDateString()}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button
+                      className="btn btn-xs btn-success"
+                      onClick={() => handleAccept(request._id)}
+                    >
+                      Accept
+                    </button>
+                    <button
+                      className="btn btn-xs btn-error"
+                      onClick={() => handleReject(request._id)}
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      )}
     </div>
   );
 };

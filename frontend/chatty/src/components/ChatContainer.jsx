@@ -7,6 +7,7 @@ import MessageSkeleton from "./skeletons/MessageSkeleton";
 import { formatMessageTime } from "../lib/utils";
 import { axiosInstance } from "../lib/axios";
 import toast from "react-hot-toast";
+import { FileText, Music, Video, Image as ImageIcon } from "lucide-react";
 
 const ChatContainer = () => {
   const {
@@ -130,13 +131,88 @@ const ChatContainer = () => {
                 </time>
               </div>
               <div className="chat-bubble flex flex-col">
-                {message.image && (
-                  <img
-                    src={message.image}
-                    alt="Attachment"
-                    className="sm:max-w-[200px] rounded-md mb-2"
-                  />
+                {/* IMAGE */}
+                {message.fileUrl && message.fileType === "image" && (
+                  <div className="relative">
+                    <a href={message.fileUrl} target="_blank" rel="noopener noreferrer">
+                      <img
+                        src={message.fileUrl}
+                        alt="Attachment"
+                        className="sm:max-w-[200px] rounded-md mb-2 cursor-pointer hover:opacity-80 transition"
+                      />
+                    </a>
+                    <span className="absolute top-2 left-2 bg-white/80 rounded-full p-1">
+                      <ImageIcon className="w-4 h-4 text-primary" />
+                    </span>
+                  </div>
                 )}
+                {/* VIDEO */}
+                {message.fileUrl && message.fileType === "video" && (
+                  <div className="relative">
+                    <video
+                      src={message.fileUrl}
+                      controls
+                      className="sm:max-w-[300px] rounded-md mb-2"
+                    />
+                    <span className="absolute top-2 left-2 bg-white/80 rounded-full p-1">
+                      <Video className="w-4 h-4 text-primary" />
+                    </span>
+                  </div>
+                )}
+                {/* AUDIO */}
+                {message.fileUrl && message.fileType === "audio" && (
+                  <div className="flex flex-col gap-1 mb-2">
+                    <div className="flex items-center gap-2">
+                      <span className="bg-base-200 rounded-full p-2">
+                        <Music className="w-5 h-5 text-primary" />
+                      </span>
+                      <audio src={message.fileUrl} controls className="w-40" />
+                    </div>
+                    {message.fileName && (
+                      <span className="text-xs text-center break-all">{message.fileName}</span>
+                    )}
+                  </div>
+                )}
+                {/* GENERIC FILE */}
+                {message.fileUrl && message.fileType === "file" && (
+                  <div className="mb-2">
+                    {message.fileName && message.fileName.toLowerCase().endsWith(".pdf") ? (
+                      <div className="flex flex-col items-center">
+                        <a href={message.fileUrl} target="_blank" rel="noopener noreferrer" className="mb-1">
+                          <embed
+                            src={message.fileUrl + "#toolbar=0&navpanes=0&scrollbar=0"}
+                            type="application/pdf"
+                            width="180px"
+                            height="220px"
+                            className="rounded border"
+                          />
+                        </a>
+                        <a
+                          href={message.fileUrl}
+                          download={message.fileName}
+                          className="flex items-center gap-2 text-blue-600 underline"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                        >
+                          <FileText className="w-5 h-5" />
+                          {message.fileName}
+                        </a>
+                      </div>
+                    ) : (
+                      <a
+                        href={message.fileUrl}
+                        download={message.fileName}
+                        className="flex items-center gap-2 text-blue-600 underline mb-2"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                      >
+                        <FileText className="w-5 h-5" />
+                        {message.fileName || "Download file"}
+                      </a>
+                    )}
+                  </div>
+                )}
+                {/* TEXT */}
                 {message.text && <p>{message.text}</p>}
               </div>
             </div>
@@ -166,7 +242,7 @@ const ChatContainer = () => {
 
     return (
       <div className="flex flex-col items-center justify-center h-full">
-        <p className="text-gray-500 mb-4">No messages yet with {selectedUser.fullName}.</p>
+        <p className="text-gray-500 mb-4">Start conversation with {selectedUser.fullName}.</p>
         <button className="btn btn-primary" onClick={handleSendChatRequest}>
           Send Chat Request
         </button>

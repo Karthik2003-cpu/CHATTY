@@ -1,4 +1,3 @@
-import { text } from "express";
 import mongoose from "mongoose";
 const messageSchema = new mongoose.Schema({
     senderId: {
@@ -14,7 +13,13 @@ const messageSchema = new mongoose.Schema({
     text: {
         type: String,
     },
-    image: {
+    fileUrl: {
+        type: String,
+    },
+    fileType: {
+        type: String, // e.g. "image", "video", "audio", "file"
+    },
+    fileName: {
         type: String,
     }
 },
